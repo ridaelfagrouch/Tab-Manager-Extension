@@ -64,3 +64,31 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const addGroupButton = document.getElementById('addGroup');
+    
+    addGroupButton.addEventListener('click', function() {
+        // Get the current window's dimensions and position
+        const currentWidth = Math.min(800, window.outerWidth);  // Limit max width
+        const currentHeight = Math.min(600, window.outerHeight);  // Limit max height
+        const currentTop = window.screenY;
+        const currentLeft = window.screenX;
+
+        // Calculate the position for the new window
+        const newLeft = currentLeft + (window.outerWidth - currentWidth) / 2;
+        const newTop = currentTop + (window.outerHeight - currentHeight) / 2;
+
+        // Open a new window and focus on it
+        
+        const newWindow = window.open('group_settings.html', '_blank', 'noopener noreferrer',  
+            `width=${currentWidth},height=${currentHeight},top=${newTop},left=${newLeft},resizable=yes,scrollbars=yes`);
+
+
+        
+        // // Attempt to focus on the new window
+        if (newWindow)
+            newWindow.focus();
+            
+    });
+});

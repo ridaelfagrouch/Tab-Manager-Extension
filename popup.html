@@ -1,17 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Tab Manager</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 10px; }
-    button { margin-top: 10px; }
-  </style>
+    <title>Tab Manager</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            width: 200px;
+        }
+        #header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgb(0, 159, 189);
+            width: 100%;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-  <h2>Tab Manager Made With Love</h2>
-  <button id="saveTabs">Save Current Tabs</button>
-  <button id="restoreTabs">Restore Tabs</button>
-  <button id="groupTabs">Group Tabs by Categories</button>
-  <script src="popup.js"></script>
+    <div id="header">
+        <h2>Tab Manager</h2>
+    </div>
+    <button id="restoreTabs">Restore Tabs</button>
+    <h3>URL Pattern Groups</h3>
+    <button id="addGroup">Add Groups settings</button>
+    <script src="popup.js"></script>
+
 </body>
 </html>
