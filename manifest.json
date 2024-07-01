@@ -3,7 +3,7 @@
     "name": "Tab Manager",
     "version": "1.0",
     "description": "A simple tab manager to organize and save your tabs.",
-    "permissions": ["tabs", "tabGroups", "storage", "windows"],
+    "permissions": ["tabs", "tabGroups", "storage", "windows", "scripting", "unlimitedStorage"],
     "background": {
       "service_worker": "background.js"
     },
