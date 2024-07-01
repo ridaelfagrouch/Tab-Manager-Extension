@@ -10,7 +10,8 @@ let groupConfigs = [
   { name: "codeRepository", color: "purple", urls: [/github\.com/, /bitbucket\.org/] },
   { name: "article", color: "yellow", urls: [/medium\.com/, /dev\.to/, /towardsdatascience\.com/] },
   { name: "job", color: "cyan", urls: [/indeed\.com/, /glassdoor\.com/, /apec\.fr/] },
-  { name: "ai", color: "blue", urls: [/chatgpt\.com/, /openai\.com/, /deepmind\.com/, /claude\.ai/] }
+  { name: "ai", color: "blue", urls: [/chatgpt\.com/, /openai\.com/, /deepmind\.com/, /claude\.ai/] },
+  {name: email, color: "red", urls: [/gmail\.com/, /outlook\.com/, /yahoo\.com/, /mail\.com/, /mail\.google\.com/]},
 ];
 
 console.log("Background groupConfigs: ", groupConfigs);
