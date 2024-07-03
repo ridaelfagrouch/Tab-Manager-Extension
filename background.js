@@ -53,7 +53,7 @@ function updateUrlPatternsForGroup(groupName, url) {
   }
 }
 
-// New function to update groupConfigs from existing browser groups
+// update groupConfigs from existing browser groups
 async function updateGroupConfigsFromExisting() {
   try {
     const existingGroups = await chrome.tabGroups.query({});
