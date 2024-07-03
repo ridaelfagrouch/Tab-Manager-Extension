@@ -205,6 +205,11 @@ document.addEventListener("DOMContentLoaded", function () {
   
       chrome.runtime.sendMessage({ action: "getGroupConfigs" }, (response) => {
         let groupConfigs = response.groupConfigs || [];
+      
+        // Remove deplicated group urls
+        groupConfigs.forEach((group) => {
+          group.urls = Array.from(new Set(group.urls));
+        });
   
         groupConfigs = groupConfigs.filter((group) => group.name !== "Others");
 
@@ -218,9 +223,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         );
 
-        console.log('---------------------------------');
-        console.log('groupConfigs test: ', groupConfigs);
-        console.log('---------------------------------');
   
         if (groupConfigs.length === 0) {
           savedGroupsContainer.innerHTML = `

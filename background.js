@@ -1,18 +1,5 @@
 // Predefined group configurations
-let groupConfigs = [
-  { name: "Search", color: "green", urls: [/google\.com/, /bing\.com/] },
-  { name: "Development", color: "green", urls: [/stackoverflow\.com/, /codepen\.io/] },
-  { name: "Entertainment", color: "red", urls: [/youtube\.com/] },
-  { name: "Professional", color: "blue", urls: [/linkedin\.com/] },
-  { name: "Social", color: "pink", urls: [/facebook\.com/, /twitter\.com/, /instagram\.com/, /reddit\.com/, /discord\.com/, /whatsapp\.com/] },
-  { name: "Movies", color: "orange", urls: [/netflix\.com/, /hulu\.com/, /amazon\.com/, /movies7\.to/] },
-  { name: "Others", color: "grey", urls: [] },
-  { name: "codeRepository", color: "purple", urls: [/github\.com/, /bitbucket\.org/] },
-  { name: "article", color: "yellow", urls: [/medium\.com/, /dev\.to/, /towardsdatascience\.com/] },
-  { name: "job", color: "cyan", urls: [/indeed\.com/, /glassdoor\.com/, /apec\.fr/] },
-  { name: "ai", color: "blue", urls: [/chatgpt\.com/, /openai\.com/, /deepmind\.com/, /claude\.ai/] },
-  {name: email, color: "red", urls: [/gmail\.com/, /outlook\.com/, /yahoo\.com/, /mail\.com/, /mail\.google\.com/]},
-];
+let groupConfigs = [];
 
 console.log("Background groupConfigs: ", groupConfigs);
 
@@ -51,6 +38,62 @@ async function loadGroupConfigs() {
     }
   } catch (error) {
     console.error("Error loading group configurations:", error);
+  }
+}
+
+// Function to update URL patterns for a specific group
+function updateUrlPatternsForGroup(groupName, url) {
+  const config = groupConfigs.find(config => config.name === groupName);
+  if (config) {
+    const domain = new URL(url).hostname;
+    const pattern = new RegExp(domain.replace(/\./g, '\\.'));
+    if (!config.urls.some(existingPattern => existingPattern.toString() === pattern.toString())) {
+      config.urls.push(pattern);
+    }
+  }
+}
+
+// New function to update groupConfigs from existing browser groups
+async function updateGroupConfigsFromExisting() {
+  try {
+    const existingGroups = await chrome.tabGroups.query({});
+    const updatedConfigs = [];
+
+    for (const group of existingGroups) {
+      const tabs = await chrome.tabs.query({ groupId: group.id });
+      const urlPatterns = tabs.map(tab => {
+        const url = new URL(tab.url);
+        return new RegExp(`^${url.protocol}//${url.hostname}`);
+      });
+
+      const existingConfig = groupConfigs.find(config => config.name === group.title);
+      if (existingConfig) {
+        updatedConfigs.push({
+          ...existingConfig,
+          color: group.color,
+          urls: Array.from(new Set([...existingConfig.urls, ...urlPatterns])) // Merge and deduplicate URL patterns
+        });
+      } else {
+        updatedConfigs.push({
+          name: group.title,
+          color: group.color,
+          urls: Array.from(new Set(urlPatterns))
+        });
+      }
+    }
+
+    // Add any remaining configs that weren't in existing groups
+    groupConfigs.forEach(config => {
+      if (!updatedConfigs.some(updatedConfig => updatedConfig.name === config.name)) {
+        updatedConfigs.push(config);
+      }
+    });
+
+    groupConfigs = updatedConfigs;
+    await saveGroupConfigs();
+    console.log("Updated groupConfigs:", groupConfigs);
+  } catch (error) {
+    console.error("Error updating group configurations:", error);
   }
 }
 
@@ -99,6 +142,10 @@ async function groupTabByCategory(tab) {
         color: color,
       });
     }
+
+    // Update URL patterns for the group
+    updateUrlPatternsForGroup(category, tab.url);
+    await saveGroupConfigs();
   } catch (error) {
     console.error("Error grouping tab:", error);
   }
@@ -185,16 +232,64 @@ function stopSaveInterval() {
 // Event listeners setup
 async function setupEventListeners() {
   await loadGroupConfigs();
+  await updateGroupConfigsFromExisting();
 
-  const tabEventsHandler = (tab) => {
-    debouncedSaveTabs();
-    if (tab.url) groupTabByCategory(tab);
+  const tabEventsHandler = async (tab) => {
+    await debouncedSaveTabs();
+    if (tab.url) {
+      await groupTabByCategory(tab);
+      // Update groupConfigs after tab is grouped
+      if (tab.groupId !== undefined && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        try {
+          const group = await chrome.tabGroups.get(tab.groupId);
+          if (group) {
+            updateUrlPatternsForGroup(group.title, tab.url);
+            await saveGroupConfigs();
+          }
+        } catch (error) {
+          console.error("Error handling grouped tab:", error);
+        }
+      }
+    }
   };
 
   chrome.tabs.onCreated.addListener(tabEventsHandler);
 
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === "complete") tabEventsHandler(tab);
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === "complete") {
+      await tabEventsHandler(tab);
+    }
+  });
+
+  // Use onUpdated event to detect group changes
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.groupId !== undefined) {
+      try {
+        if (changeInfo.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+          const group = await chrome.tabGroups.get(changeInfo.groupId);
+          if (group) {
+            updateUrlPatternsForGroup(group.title, tab.url);
+
+            // Remove URL pattern from other groups
+            groupConfigs.forEach(config => {
+              if (config.name !== group.title) {
+                config.urls = config.urls.filter(pattern => !pattern.test(tab.url));
+              }
+            });
+
+            await saveGroupConfigs();
+          }
+        } else {
+          // Tab was removed from a group
+          groupConfigs.forEach(config => {
+            config.urls = config.urls.filter(pattern => !pattern.test(tab.url));
+          });
+          await saveGroupConfigs();
+        }
+      } catch (error) {
+        console.error("Error handling grouped tab:", error);
+      }
+    }
   });
 
   chrome.tabs.onRemoved.addListener(debouncedSaveTabs);
@@ -204,14 +299,16 @@ async function setupEventListeners() {
   chrome.windows.onCreated.addListener(debouncedSaveTabs);
   chrome.windows.onRemoved.addListener(debouncedSaveTabs);
 
-  chrome.runtime.onInstalled.addListener(() => {
-    groupTabsByCategories();
-    saveTabsAutomatically();
+  chrome.runtime.onInstalled.addListener(async () => {
+    await updateGroupConfigsFromExisting();
+    await groupTabsByCategories();
+    await saveTabsAutomatically();
   });
 
-  chrome.runtime.onStartup.addListener(() => {
-    groupTabsByCategories();
-    saveTabsAutomatically();
+  chrome.runtime.onStartup.addListener(async () => {
+    await updateGroupConfigsFromExisting();
+    await groupTabsByCategories();
+    await saveTabsAutomatically();
   });
 
   chrome.runtime.onSuspend.addListener(stopSaveInterval);

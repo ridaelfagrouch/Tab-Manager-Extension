@@ -5,7 +5,8 @@
     "description": "A simple tab manager to organize and save your tabs.",
     "permissions": ["tabs", "tabGroups", "storage", "windows", "scripting", "unlimitedStorage"],
     "background": {
-      "service_worker": "background.js"
+      "service_worker": "background.js",
+      "type": "module"
     },
     "action": {
       "default_popup": "popup.html",
