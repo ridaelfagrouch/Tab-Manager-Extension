@@ -7,7 +7,7 @@ console.log("Background groupConfigs: ", groupConfigs);
 function serializeGroupConfigs(groupConfigs) {
   return groupConfigs.map(config => ({
     ...config,
-    urls: config.urls.map(url => url.toString())
+    urls: Array.from(config.urls).map(url => url.toString())
   }));
 }
 
@@ -15,15 +15,22 @@ function serializeGroupConfigs(groupConfigs) {
 function deserializeGroupConfigs(groupConfigs) {
   return groupConfigs.map(config => ({
     ...config,
-    urls: config.urls.map(url => new RegExp(url.slice(1, -1)))
+    urls: new Set(config.urls.map(url => new RegExp(url.slice(1, -1))))
   }));
+}
+
+// New helper function to remove empty groups
+function removeEmptyGroups() {
+  groupConfigs = groupConfigs.filter(config => config.urls.size > 0);
 }
 
 // Save group configurations to storage
 async function saveGroupConfigs() {
   try {
+    removeEmptyGroups(); // Remove empty groups before saving
     const serializedGroupConfigs = serializeGroupConfigs(groupConfigs);
     await chrome.storage.local.set({ groupConfigs: serializedGroupConfigs });
+    console.log("Group configurations saved:", serializedGroupConfigs);
   } catch (error) {
     console.error("Error saving group configurations:", error);
   }
@@ -35,6 +42,7 @@ async function loadGroupConfigs() {
     const result = await chrome.storage.local.get("groupConfigs");
     if (result.groupConfigs) {
       groupConfigs = deserializeGroupConfigs(result.groupConfigs);
+      console.log("Group configurations loaded:", groupConfigs);
     }
   } catch (error) {
     console.error("Error loading group configurations:", error);
@@ -47,13 +55,30 @@ function updateUrlPatternsForGroup(groupName, url) {
   if (config) {
     const domain = new URL(url).hostname;
     const pattern = new RegExp(domain.replace(/\./g, '\\.'));
-    if (!config.urls.some(existingPattern => existingPattern.toString() === pattern.toString())) {
-      config.urls.push(pattern);
-    }
+    config.urls.add(pattern);
   }
 }
 
-// update groupConfigs from existing browser groups
+// New helper function to ensure a group is in groupConfigs
+async function ensureGroupInConfigs(groupName, color) {
+  console.log(`Ensuring group ${groupName} is in configs`);
+  let groupConfig = groupConfigs.find(config => config.name === groupName);
+  if (!groupConfig) {
+    groupConfig = {
+      name: groupName,
+      color: color,
+      urls: new Set()
+    };
+    groupConfigs.push(groupConfig);
+    console.log(`New group ${groupName} added to groupConfigs`);
+  } else {
+    console.log(`Group ${groupName} already exists in configs`);
+  }
+  await saveGroupConfigs();
+  return groupConfig;
+}
+
+// Update groupConfigs from existing browser groups
 async function updateGroupConfigsFromExisting() {
   try {
     const existingGroups = await chrome.tabGroups.query({});
@@ -71,13 +96,13 @@ async function updateGroupConfigsFromExisting() {
         updatedConfigs.push({
           ...existingConfig,
           color: group.color,
-          urls: Array.from(new Set([...existingConfig.urls, ...urlPatterns])) // Merge and deduplicate URL patterns
+          urls: new Set([...existingConfig.urls, ...urlPatterns]) // Merge and deduplicate URL patterns
         });
       } else {
         updatedConfigs.push({
           name: group.title,
           color: group.color,
-          urls: Array.from(new Set(urlPatterns))
+          urls: new Set(urlPatterns)
         });
       }
     }
@@ -126,6 +151,7 @@ async function groupTabByCategory(tab) {
   }
 
   const category = getTabCategory(tab.url);
+  console.log(`Grouping tab ${tab.id} into category ${category}`);
   const config = groupConfigs.find((config) => config.name === category);
   const color = config ? config.color : "grey";
 
@@ -134,14 +160,19 @@ async function groupTabByCategory(tab) {
     let group = existingGroups.find((g) => g.title === category);
 
     if (group) {
+      console.log(`Existing group found for ${category}`);
       await chrome.tabs.group({ tabIds: [tab.id], groupId: group.id });
     } else {
+      console.log(`Creating new group for ${category}`);
       const groupId = await chrome.tabs.group({ tabIds: [tab.id] });
-      await chrome.tabGroups.update(groupId, {
+      group = await chrome.tabGroups.update(groupId, {
         title: category,
         color: color,
       });
     }
+
+    // Ensure the group exists in groupConfigs
+    await ensureGroupInConfigs(category, group.color);
 
     // Update URL patterns for the group
     updateUrlPatternsForGroup(category, tab.url);
@@ -179,10 +210,11 @@ async function groupTabsByCategories() {
 
       if (!group) {
         const groupId = await chrome.tabs.group({ tabIds });
-        await chrome.tabGroups.update(groupId, {
+        group = await chrome.tabGroups.update(groupId, {
           title: category,
           color: color,
         });
+        await ensureGroupInConfigs(category, color);
       } else {
         const ungroupedTabIds = tabIds.filter(
           (id) => !tabs.find((t) => t.id === id && t.groupId === group.id)
@@ -192,6 +224,7 @@ async function groupTabsByCategories() {
         }
       }
     }
+    await saveGroupConfigs();
   } catch (error) {
     console.error("Error grouping tabs by categories:", error);
   }
@@ -203,12 +236,15 @@ async function saveTabsAutomatically() {
     const windows = await chrome.windows.getAll({ populate: true });
     const savedWindows = windows.map((window) => ({
       id: window.id,
-      tabs: window.tabs.map((tab) => ({
-        url: tab.url,
-        title: tab.title,
-        pinned: tab.pinned,
-        groupId: tab.groupId,
-      })),
+      tabs: Array.from(
+        window.tabs.map((tab) => ({
+          id: tab.id,
+          url: tab.url,
+          pinned: tab.pinned,
+          active: tab.active,
+          groupId: tab.groupId,
+        }))
+      ),
     }));
 
     await chrome.storage.local.set({ savedWindows: savedWindows });
@@ -229,6 +265,15 @@ function stopSaveInterval() {
   clearInterval(saveIntervalId);
 }
 
+function logGroupConfigs() {
+  console.log("Current groupConfigs:", JSON.stringify(groupConfigs, (key, value) => {
+    if (value instanceof Set) {
+      return Array.from(value);
+    }
+    return value;
+  }, 2));
+}
+
 // Event listeners setup
 async function setupEventListeners() {
   await loadGroupConfigs();
@@ -238,18 +283,6 @@ async function setupEventListeners() {
     await debouncedSaveTabs();
     if (tab.url) {
       await groupTabByCategory(tab);
-      // Update groupConfigs after tab is grouped
-      if (tab.groupId !== undefined && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-        try {
-          const group = await chrome.tabGroups.get(tab.groupId);
-          if (group) {
-            updateUrlPatternsForGroup(group.title, tab.url);
-            await saveGroupConfigs();
-          }
-        } catch (error) {
-          console.error("Error handling grouped tab:", error);
-        }
-      }
     }
   };
 
@@ -261,35 +294,65 @@ async function setupEventListeners() {
     }
   });
 
-  // Use onUpdated event to detect group changes
+  // Enhanced listener for group changes
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.groupId !== undefined) {
+      console.log(`Tab ${tabId} group changed to ${changeInfo.groupId}`);
       try {
         if (changeInfo.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
           const group = await chrome.tabGroups.get(changeInfo.groupId);
           if (group) {
+            console.log(`Tab ${tabId} added to group ${group.title}`);
+            // Ensure the group exists in groupConfigs
+            await ensureGroupInConfigs(group.title, group.color);
+
+            // Update the URL pattern for the current group
             updateUrlPatternsForGroup(group.title, tab.url);
 
-            // Remove URL pattern from other groups
+            // Remove the URL pattern from other groups
             groupConfigs.forEach(config => {
               if (config.name !== group.title) {
-                config.urls = config.urls.filter(pattern => !pattern.test(tab.url));
+                config.urls = new Set(Array.from(config.urls).filter(pattern => !pattern.test(tab.url)));
               }
             });
 
+            // Add the new URL pattern to the group
+            const domain = new URL(tab.url).hostname;
+            const pattern = new RegExp(domain.replace(/\./g, '\\.'));
+            const groupConfig = groupConfigs.find(config => config.name === group.title);
+            groupConfig.urls.add(pattern);
+
+            // Save the updated groupConfigs
             await saveGroupConfigs();
           }
         } else {
+          console.log(`Tab ${tabId} removed from group`);
           // Tab was removed from a group
           groupConfigs.forEach(config => {
-            config.urls = config.urls.filter(pattern => !pattern.test(tab.url));
+            config.urls = new Set(Array.from(config.urls).filter(pattern => !pattern.test(tab.url)));
           });
-          await saveGroupConfigs();
+          await saveGroupConfigs(); // This will now remove empty groups
         }
       } catch (error) {
         console.error("Error handling grouped tab:", error);
       }
     }
+  });
+
+  // Add a new listener for group removal
+  chrome.tabGroups.onRemoved.addListener(async (group) => {
+    console.log(`Group ${group.title} was removed`);
+    const groupIndex = groupConfigs.findIndex(config => config.name === group.title);
+    if (groupIndex !== -1) {
+      groupConfigs.splice(groupIndex, 1);
+      await saveGroupConfigs();
+      console.log(`Group ${group.title} removed from groupConfigs`);
+    }
+  });
+
+  chrome.tabGroups.onUpdated.addListener(async (group) => {
+    console.log(`Group ${group.id} updated: ${JSON.stringify(group)}`);
+    await ensureGroupInConfigs(group.title, group.color);
   });
 
   chrome.tabs.onRemoved.addListener(debouncedSaveTabs);
@@ -312,6 +375,8 @@ async function setupEventListeners() {
   });
 
   chrome.runtime.onSuspend.addListener(stopSaveInterval);
+
+  setInterval(logGroupConfigs, 10000); // Log every 10 seconds
 }
 
 setupEventListeners();
