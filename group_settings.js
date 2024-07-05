@@ -223,6 +223,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         );
 
+        const getOriginalUrl = (url) => {
+            url = url.replace(/\\/g, "");
+            url = url.replace(/^\/\^/, '').replace(/\/$/, "");
+            return url;
+        }
+
   
         if (groupConfigs.length === 0) {
           savedGroupsContainer.innerHTML = `
@@ -232,26 +238,22 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           console.log("Saved groups:", groupConfigs);
           savedGroupsContainer.innerHTML = `
-            ${groupConfigs
-              .map(
-                (group, index) => `
-                    <div>
-                        <h3>Group ${index + 1}</h3>
-                        <div class="saved-group" style="padding: 20px;">
-                            <h4>Group Name: ${group.name}</h4>
-                            <h4>Color: ${group.color}</h4>
-                            <h4>URLs:</h4>
-                            <ul>
-                                ${group.urls
-                                  .map((url) => `<li>${url}</li>`)
-                                  .join("")}
-                            </ul>
-                        </div>
-                        <hr style="background-color: black; height: 2px;">
-                    </div>
-                    `
-              )
-              .join("")}
+            ${groupConfigs.map((group, index) => `
+            <div class="saved-group-container">
+                <div class="saved-group-header">
+                    <h4>Group ${index + 1}: </h4>
+                    <h3>${group.name}</h3>
+                    <div class="groupColor" style="background-color: ${group.color};"></div>
+                </div>
+                <div class="saved-group-content">
+                    <h4>URLs:</h4>
+                    <ul>
+                        ${group.urls.map((url) => `<li>${getOriginalUrl(url)}</li>`).join("")}
+                    </ul>
+                </div>
+                <hr>
+            </div>
+        `).join("")}
             `;
         }
       });

@@ -12,6 +12,8 @@
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            margin: 0;
+            padding: 0;
         }
 
         .group {
@@ -24,13 +26,14 @@
         .url-input {
             display: flex;
             flex-direction: column;
-            margin-bottom: 5px
+            margin-bottom: 5px;
         }
 
         .form-container {
             width: 400px;
-            border: 2px solid black;
-            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
             padding: 20px;
             margin-bottom: 20px;
         }
@@ -45,13 +48,21 @@
 
         #groups-settings-container {
             display: flex;
-            justify-content: row;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            height: 800px;
+            background-color: #f0f0f0;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         #savaed-groups-container {
-            width: 400px; 
-            background-color: #f0f0f0; 
-            margin-left: 10px;
+            width: 400px;
+            padding-top: 10px;
+            padding-left: 10px;
+            padding-right: 10px;
+            background-color: #ffffff;
         }
 
         #saved-groups {
@@ -65,15 +76,81 @@
         }
 
         #settings-container {
-            background-color: #009fbd;
             overflow-y: auto;
             max-height: 700px;
-            padding: 20px;
+            padding-top: 10px;
+            padding-left: 20px;
+            padding-right: 20px;
+            background-color: #ffffff;
         }
 
         .error-message {
             color: red;
             font-size: 12px;
+        }
+
+        .saved-group-container {
+            margin-bottom: 20px;
+            margin-left: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .saved-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #e0e0e0;
+            padding: 10px;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .saved-group-content {
+            padding: 10px;
+        }
+
+        .saved-group-content h4 {
+            margin-bottom: 5px;
+        }
+
+        .saved-group-content ul {
+            padding-left: 20px;
+        }
+
+        .saved-group-content ul li {
+            margin-bottom: 5px;
+        }
+
+        .saved-group-content hr {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin-top: 10px;
+        }
+
+        .groupColor {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        .message-container {
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .message-container p {
+            margin: 0;
+            font-size: 16px;
+            color: #555;
+            max-width: 400px;
         }
 
     </style>
@@ -82,17 +159,30 @@
 <body>
     <h1>Groups Settings</h1>
     <div id="groups-settings-container">
-        <div id="settings-container">
-            <div id="groups-container"></div>
-            <div id="button-groups-container">
-                <button id="add-group-btn">Add New Group</button>
+        <div>
+            <div style="width: 100%; background-color: #ffffff; display: flex; justify-content: center; align-items: center;">
+                <h2>Add Groups</h2>
+            </div>
+            <div id="settings-container">
+                <div class="message-container" >
+                    <p>
+                        You can manage your groups here or create new groups directly in your browser,
+                        which will automatically be saved.
+                    </p>
+                </div>
+                <div id="groups-container"></div>
+                <div id="button-groups-container">
+                    <button id="add-group-btn">Add New Group</button>
+                </div>
             </div>
         </div>
-        <div id="savaed-groups-container">
-            <div style="width: 100%; background-color: #009fbd; display: flex; justify-content: center; align-items: center;">
+        <div>
+            <div style="width: 100%; background-color: #ffffff; display: flex; justify-content: center; align-items: center;">
                 <h2>Saved Groups</h2>
             </div>
-            <div id="saved-groups">
+            <div id="savaed-groups-container">
+                <div id="saved-groups">
+                </div>
             </div>
         </div>
     </div>
