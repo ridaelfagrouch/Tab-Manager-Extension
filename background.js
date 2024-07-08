@@ -3,7 +3,7 @@ let groupConfigs = [];
 
 console.log("Background groupConfigs: ", groupConfigs);
 
-// Serialize RegExp objects to strings
+// Serialize RegExp objects to strings --------------------------------------------------------------------------------------
 function serializeGroupConfigs(groupConfigs) {
   return groupConfigs.map(config => ({
     ...config,
@@ -11,7 +11,7 @@ function serializeGroupConfigs(groupConfigs) {
   }));
 }
 
-// Deserialize strings back to RegExp objects
+// Deserialize strings back to RegExp objects -------------------------------------------------------------------------------
 function deserializeGroupConfigs(groupConfigs) {
   return groupConfigs.map(config => ({
     ...config,
@@ -19,12 +19,12 @@ function deserializeGroupConfigs(groupConfigs) {
   }));
 }
 
-// New helper function to remove empty groups
+// New helper function to remove empty groups -------------------------------------------------------------------------------
 function removeEmptyGroups() {
   groupConfigs = groupConfigs.filter(config => config.urls.size > 0);
 }
 
-// Save group configurations to storage
+// Save group configurations to storage -------------------------------------------------------------------------------------
 async function saveGroupConfigs() {
   try {
     removeEmptyGroups(); // Remove empty groups before saving
@@ -36,7 +36,7 @@ async function saveGroupConfigs() {
   }
 }
 
-// Load group configurations from storage
+// Load group configurations from storage ----------------------------------------------------------------------------------
 async function loadGroupConfigs() {
   try {
     const result = await chrome.storage.local.get("groupConfigs");
@@ -49,7 +49,7 @@ async function loadGroupConfigs() {
   }
 }
 
-// Function to update URL patterns for a specific group
+// Function to update URL patterns for a specific group -------------------------------------------------------------------
 function updateUrlPatternsForGroup(groupName, url) {
   const config = groupConfigs.find(config => config.name === groupName);
   if (config) {
@@ -59,7 +59,7 @@ function updateUrlPatternsForGroup(groupName, url) {
   }
 }
 
-// New helper function to ensure a group is in groupConfigs
+// New helper function to ensure a group is in groupConfigs ----------------------------------------------------------------
 async function ensureGroupInConfigs(groupName, color) {
   console.log(`Ensuring group ${groupName} is in configs`);
   let groupConfig = groupConfigs.find(config => config.name === groupName);
@@ -78,7 +78,7 @@ async function ensureGroupInConfigs(groupName, color) {
   return groupConfig;
 }
 
-// Update groupConfigs from existing browser groups
+// Update groupConfigs from existing browser groups -----------------------------------------------------------------------
 async function updateGroupConfigsFromExisting() {
   try {
     const existingGroups = await chrome.tabGroups.query({});
@@ -96,7 +96,7 @@ async function updateGroupConfigsFromExisting() {
         updatedConfigs.push({
           ...existingConfig,
           color: group.color,
-          urls: new Set([...existingConfig.urls, ...urlPatterns]) // Merge and deduplicate URL patterns
+          urls: Array.from(new Set([...existingConfig.urls, ...urlPatterns]))
         });
       } else {
         updatedConfigs.push({
@@ -121,8 +121,8 @@ async function updateGroupConfigsFromExisting() {
     console.error("Error updating group configurations:", error);
   }
 }
-
-// Helper function to determine the category of a tab
+ 
+// Helper function to determine the category of a tab -----------------------------------------------------------------------
 function getTabCategory(url) {
   for (const config of groupConfigs) {
     for (const pattern of config.urls) {
@@ -134,7 +134,7 @@ function getTabCategory(url) {
   return "Others";
 }
 
-// Debounce function
+// Debounce function -------------------------------------------------------------------------------------------------------
 function debounce(func, delay) {
   let timeoutId;
   return (...args) => {
@@ -143,7 +143,7 @@ function debounce(func, delay) {
   };
 }
 
-// Function to group a single tab
+// Function to group a single tab -------------------------------------------------------------------------------------------
 async function groupTabByCategory(tab) {
   if (!chrome.tabGroups) {
     console.warn("Tab Groups API is not available. Grouping tabs is not supported.");
@@ -182,7 +182,7 @@ async function groupTabByCategory(tab) {
   }
 }
 
-// Function to group tabs by categories
+// Function to group tabs by categories -------------------------------------------------------------------------------------
 async function groupTabsByCategories() {
   if (!chrome.tabGroups) {
     console.warn("Tab Groups API is not available. Grouping tabs is not supported.");
@@ -230,7 +230,7 @@ async function groupTabsByCategories() {
   }
 }
 
-// Function to save tabs automatically
+// Function to save tabs automatically -------------------------------------------------------------------------------------
 async function saveTabsAutomatically() {
   try {
     const windows = await chrome.windows.getAll({ populate: true });
@@ -254,11 +254,11 @@ async function saveTabsAutomatically() {
   }
 }
 
-// Debounced version of saveTabsAutomatically
+// Debounced version of saveTabsAutomatically -------------------------------------------------------------------------------
 const debouncedSaveTabs = debounce(saveTabsAutomatically, 1000);
 
 // Set up an interval to save tabs every 5 minutes
-const SAVE_INTERVAL = 300000; // 5 minutes
+const SAVE_INTERVAL = 300000;
 let saveIntervalId = setInterval(saveTabsAutomatically, SAVE_INTERVAL);
 
 function stopSaveInterval() {
@@ -274,7 +274,7 @@ function logGroupConfigs() {
   }, 2));
 }
 
-// Event listeners setup
+// Event listeners setup ---------------------------------------------------------------------------------------------------
 async function setupEventListeners() {
   await loadGroupConfigs();
   await updateGroupConfigsFromExisting();
@@ -294,7 +294,7 @@ async function setupEventListeners() {
     }
   });
 
-  // Enhanced listener for group changes
+  // Enhanced listener for group changes ----------------------------------------------------------------------------------
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.groupId !== undefined) {
       console.log(`Tab ${tabId} group changed to ${changeInfo.groupId}`);
@@ -305,41 +305,56 @@ async function setupEventListeners() {
             console.log(`Tab ${tabId} added to group ${group.title}`);
             // Ensure the group exists in groupConfigs
             await ensureGroupInConfigs(group.title, group.color);
-
-            // Update the URL pattern for the current group
-            updateUrlPatternsForGroup(group.title, tab.url);
-
-            // Remove the URL pattern from other groups
-            groupConfigs.forEach(config => {
-              if (config.name !== group.title) {
-                config.urls = new Set(Array.from(config.urls).filter(pattern => !pattern.test(tab.url)));
+  
+            // Validate tab.url before using it
+            if (tab.url) {
+              // Update the URL pattern for the current group
+              updateUrlPatternsForGroup(group.title, tab.url);
+  
+              // Remove the URL pattern from other groups
+              groupConfigs.forEach(config => {
+                if (config.name !== group.title) {
+                  config.urls = new Set(Array.from(config.urls).filter(pattern => !pattern.test(tab.url)));
+                }
+              });
+  
+              // Add the new URL pattern to the group
+              try {
+                const domain = new URL(tab.url).hostname;
+                const pattern = new RegExp(domain.replace(/\./g, '\\.'));
+                const groupConfig = groupConfigs?.find(config => config?.name === group?.title);
+                if (groupConfig) {
+                  groupConfig?.urls.add(pattern);
+                } else {
+                  console.error(`Group config not found for group ${group.title}`);
+                }
+              } catch (urlError) {
+                console.error(`Invalid URL for tab ${tabId}: ${tab.url}`, urlError);
               }
-            });
-
-            // Add the new URL pattern to the group
-            const domain = new URL(tab.url).hostname;
-            const pattern = new RegExp(domain.replace(/\./g, '\\.'));
-            const groupConfig = groupConfigs.find(config => config.name === group.title);
-            groupConfig.urls.add(pattern);
-
-            // Save the updated groupConfigs
-            await saveGroupConfigs();
+  
+              await saveGroupConfigs();
+              // Save the updated groupConfigs
+            } else {
+              console.warn(`Tab ${tabId} does not have a valid URL`);
+            }
           }
         } else {
           console.log(`Tab ${tabId} removed from group`);
           // Tab was removed from a group
-          groupConfigs.forEach(config => {
-            config.urls = new Set(Array.from(config.urls).filter(pattern => !pattern.test(tab.url)));
-          });
-          await saveGroupConfigs(); // This will now remove empty groups
+          if (tab.url) {
+            groupConfigs.forEach(config => {
+              config.urls = new Set(Array.from(config.urls).filter(pattern => !pattern.test(tab.url)));
+            });
+            await saveGroupConfigs(); // This will now remove empty groups
+          }
         }
       } catch (error) {
         console.error("Error handling grouped tab:", error);
       }
     }
-  });
+  });  
 
-  // Add a new listener for group removal
+  // new listener for group removal ----------------------------------------------------------------------------------
   chrome.tabGroups.onRemoved.addListener(async (group) => {
     console.log(`Group ${group.title} was removed`);
     const groupIndex = groupConfigs.findIndex(config => config.name === group.title);
@@ -349,6 +364,7 @@ async function setupEventListeners() {
       console.log(`Group ${group.title} removed from groupConfigs`);
     }
   });
+
 
   chrome.tabGroups.onUpdated.addListener(async (group) => {
     console.log(`Group ${group.id} updated: ${JSON.stringify(group)}`);
@@ -387,6 +403,56 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   } else if (request.action === "saveGroupConfigs") {
     groupConfigs = deserializeGroupConfigs(request.groupConfigs);
     saveGroupConfigs().then(() => sendResponse({ status: "success" }));
+  }
+  return true;
+});
+
+
+async function deleteGroup(groupName) {
+  console.log(`Deleting group: ${groupName}`);
+  
+  // Remove the group from groupConfigs
+  groupConfigs = groupConfigs.filter(config => config.name !== groupName);
+  
+  // Save the updated groupConfigs
+  await saveGroupConfigs();
+  
+  // Find and remove the corresponding tab group and its tabs
+  try {
+    const groups = await chrome.tabGroups.query({ title: groupName });
+    for (const group of groups) {
+      const tabs = await chrome.tabs.query({ groupId: group.id });
+      for (const tab of tabs) {
+        await chrome.tabs.remove(tab.id);
+      }
+    }
+  } catch (error) {
+    console.error(`Error removing tab group and tabs: ${error}`);
+  }
+  
+  console.log(`Group ${groupName} deleted successfully`);
+  
+  // Reload the settings tab
+  reloadSettingsTab();
+}
+
+
+
+async function reloadSettingsTab() {
+  const tabs = await chrome.tabs.query({url: chrome.runtime.getURL("settings.html")});
+  for (const tab of tabs) {
+    chrome.tabs.reload(tab.id);
+  }
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getGroupConfigs") {
+    sendResponse({ groupConfigs: serializeGroupConfigs(groupConfigs) });
+  } else if (request.action === "saveGroupConfigs") {
+    groupConfigs = deserializeGroupConfigs(request.groupConfigs);
+    saveGroupConfigs().then(() => sendResponse({ status: "success" }));
+  } else if (request.action === "deleteGroup") {
+    deleteGroup(request.groupName).then(() => sendResponse({ status: "success" }));
   }
   return true;
 });
