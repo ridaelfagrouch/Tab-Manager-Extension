@@ -1,3 +1,6 @@
+
+<!-- -------------------------------------------------------------------------------- -->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -14,6 +17,19 @@
             flex-direction: column;
             margin: 0;
             padding: 0;
+            background-color: #f0f0f0; /* Added background color for the entire body */
+        }
+
+        h1 {
+            margin-top: 20px; /* Added margin-top to separate from the top */
+        }
+
+        h2 {
+            margin: 0;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .group {
@@ -21,6 +37,8 @@
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            background-color: #ffffff; 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .url-input {
@@ -63,6 +81,9 @@
             padding-left: 10px;
             padding-right: 10px;
             background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            min-height: 700px;
+            max-height: 700px;
         }
 
         #saved-groups {
@@ -83,6 +104,7 @@
             padding-right: 20px;
             min-height: 700px;
             background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .error-message {
@@ -99,6 +121,7 @@
             padding: 10px;
             background-color: #f9f9f9;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            
         }
 
         .saved-group-header {
@@ -177,11 +200,11 @@
     <h1>Groups Settings</h1>
     <div id="groups-settings-container">
         <div>
-            <div style="width: 100%; background-color: #ffffff; display: flex; justify-content: center; align-items: center;">
+            <div>
                 <h2>Add Groups</h2>
             </div>
             <div id="settings-container">
-                <div class="message-container" >
+                <div class="message-container">
                     <p>
                         You can manage your groups here or create new groups directly in your browser,
                         which will automatically be saved.
@@ -194,11 +217,12 @@
             </div>
         </div>
         <div>
-            <div style="width: 100%; background-color: #ffffff; display: flex; justify-content: center; align-items: center;">
+            <div>
                 <h2>Saved Groups</h2>
             </div>
             <div id="savaed-groups-container">
                 <div id="saved-groups">
+                    <!-- Saved groups will be dynamically populated -->
                 </div>
             </div>
         </div>

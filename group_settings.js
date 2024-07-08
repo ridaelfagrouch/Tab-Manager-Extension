@@ -242,28 +242,24 @@ document.addEventListener("DOMContentLoaded", function () {
     .map(
       (group, index) => `
   <div class="saved-group-container">
-      <div class="delete-group-btn">
-          <button class="delete-btn" data-group-name="${group.name}">
-              <img src="../icons/delete-svg.svg" alt="Delete" width="20" height="20">
-          </button>
-      </div>
-      <div class="saved-group-header">
-          <h4>Group ${index + 1}: </h4>
-          <h3>${group.name}</h3>
-          <div class="groupColor" style="background-color: ${
-            group.color
-          };"></div>
-      </div>
-      <div class="saved-group-content">
-          <h4>URLs:</h4>
-          <ul>
-              ${group.urls
-                .map((url) => `<li>${getOriginalUrl(url)}</li>`)
-                .join("")}
-          </ul>
-      </div>
-      <hr>
-  </div>
+    <div class="saved-group-header">
+        <div class="group-info">
+            <h4>Group ${index + 1}: ${group.name}</h4>
+            <div class="groupColor" style="background-color: ${group.color};"></div>
+        </div>
+        <button class="delete-btn" data-group-name="${group.name}">
+            <img src="../icons/delete-svg.svg" alt="Delete" width="20" height="20">
+        </button>
+    </div>
+    <div class="saved-group-content">
+        <h4>URLs:</h4>
+        <ul>
+            ${group.urls.map((url) => `<li>${getOriginalUrl(url)}</li>`).join("")}
+        </ul>
+    </div>
+    <hr>
+</div>
+
 `
     )
     .join("")}
